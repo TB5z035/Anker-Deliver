@@ -51,4 +51,7 @@ SCANNET_COLOR_MAP = {
 # Shots = 20
 CONFIGS = {
     'normal_knn_range': 10,
+    'dist_proportion': 0.8,
+    'auto_temperature': True,
+    'temperature': 0.1
 }

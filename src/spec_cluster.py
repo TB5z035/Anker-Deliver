@@ -12,7 +12,7 @@ from plyfile import PlyData
 from sklearnex import patch_sklearn
 from tqdm import tqdm
 
-from .config import SCANNET_COLOR_MAP
+from .config import CONFIGS, SCANNET_COLOR_MAP
 from .utils import count_time, plydata_to_arrays, setup_mapping, timer
 
 patch_sklearn()
@@ -23,20 +23,9 @@ class SpecClusterPipeline():
 
     def __init__(self, scan_path, count=200) -> None:
         self._load_plydata(scan_path)
-        self._load_sample_ids(count)
 
     def _load_plydata(self, scan_path):
         self.full_plydata = PlyData.read(scan_path)
-        return self
-
-    def _load_sample_ids(self, count=200):
-        self.sample_ids: List[int] = []
-        while len(self.sample_ids) < count:
-            while True:
-                drawn = randint(0, len(self.full_plydata['vertex']) - 1)
-                if drawn not in self.sample_ids and self.full_plydata['vertex'][drawn]['label'] != 255:
-                    self.sample_ids.append(drawn)
-                    break
         return self
 
     @timer
@@ -60,7 +49,6 @@ class SpecClusterPipeline():
             new_ply_data = PlyData.read(temp_f.name)
 
         self.sampled_plydata = new_ply_data
-        print(f"downsampled size: {len(self.sampled_plydata['vertex'])}")
         return self
 
     @timer
@@ -88,7 +76,7 @@ class SpecClusterPipeline():
     @timer
     def calc_ang_dist(self, abs_inv=True, knn_range=None):
         assert self.sampled_plydata is not None
-        knn = self.conf.getint('NormalKnnRange') if knn_range is None else knn_range
+        knn = CONFIGS['normal_knn_range'] if knn_range is None else knn_range
 
         pcd = o3d.geometry.PointCloud()
         vertices, _ = plydata_to_arrays(self.sampled_plydata)
@@ -110,13 +98,13 @@ class SpecClusterPipeline():
     def calc_aff_mat(self, ratio: float = None):
         assert self.geod_mat is not None
         assert self.ang_mat is not None
-        ratio = self.conf.getfloat('DistanceProportion') if ratio is None else ratio
+        ratio = CONFIGS['dist_proportion'] if ratio is None else ratio
         print(ratio)
         geod_mat = torch.as_tensor(self.geod_mat).cuda()
         ang_mat = self.ang_mat.cuda()
         dist_mat = ratio * geod_mat + (1 - ratio) * ang_mat
         dist_mat = (dist_mat + dist_mat.T) / 2
-        sigma = dist_mat.mean() if self.conf.getboolean('AutoTemperature') else self.conf.getfloat('Temperature')
+        sigma = dist_mat.mean() if CONFIGS['auto_temperature'] else CONFIGS['temperature']
         aff_mat = np.e**(-dist_mat / (2 * sigma**2))
 
         aff_iv_mat = torch.diag(1 / aff_mat.sum(dim=1).sqrt())
@@ -136,13 +124,18 @@ class SpecClusterPipeline():
         return self
 
     @timer
-    def knn_cluster(self):
+    def knn_cluster(self, count=200):
         shot = len(self.sample_ids)
         assert self.full_plydata is not None
         assert self.full2sampled is not None
         assert self.sample_ids is not None
         assert self.embedding_mat is not None
-        selected_vertex_indices_in_sampled = self.full2sampled[self.sample_ids]
+
+        mask = self.sampled_plydata['vertex']['label'] != 255
+        assert mask.any()
+        assert count < mask.sum()
+        selected_vertex_indices_in_sampled = np.random.permutation(np.nonzero(mask)[0])[:count]
+        
         selected_vertex_labels = self.full_plydata['vertex']['label'][self.sample_ids]
         self.cluster_result = KMeans(
             n_clusters=shot,
