@@ -1,7 +1,7 @@
-import datetime
 import functools
 import sys
 from contextlib import contextmanager
+from datetime import datetime
 from typing import List, Tuple
 
 import numpy as np

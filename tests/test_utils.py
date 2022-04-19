@@ -1,8 +1,10 @@
+import os
 import numpy as np
 from plyfile import PlyData
 from src.utils import add_fields_online, plydata_to_arrays
 
 ply_path = 'misc/scene0000_00_vh_clean_2.labels.ply'
+
 
 def test_add_fields_online():
     plydata = PlyData.read(ply_path)
@@ -10,12 +12,14 @@ def test_add_fields_online():
     assert 'new_field1' in ret_plydata['vertex'].dtype().fields.keys()
     assert 'new_field2' in ret_plydata['vertex'].dtype().fields.keys()
 
+
 def test_add_fields_online_clear():
     plydata = PlyData.read(ply_path)
     ret_plydata = add_fields_online(plydata, [('new_field1', 'ushort'), ('new_field2', 'ushort')], clear=True)
     assert 'new_field1' in ret_plydata['vertex'].dtype().fields.keys()
     assert not ret_plydata['vertex']['new_field1'].any()
     assert not ret_plydata['vertex']['new_field2'].any()
+
 
 def test_plydata_to_arrays():
     plydata = PlyData.read(ply_path)

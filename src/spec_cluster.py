@@ -1,5 +1,6 @@
 import os
 from random import randint
+import tempfile
 from typing import List
 
 import numpy as np
@@ -41,27 +42,23 @@ class SpecClusterPipeline():
     @timer
     def downsample(self, dstarget=8000):
         assert hasattr(self, 'full_plydata') is not None
-        print('start')
-        # TODO restore color of the meshes
-        temp_ply_path = f'/run/user/3023/.tmp_{randint(0,65535)}.ply'
-        self.full_plydata.write(temp_ply_path)
-        meshset = pymeshlab.MeshSet()
-        meshset.load_new_mesh(temp_ply_path)
 
-        meshset.apply_filter(
-            'simplification_quadric_edge_collapse_decimation',
-            targetperc=dstarget / len(self.full_plydata['vertex']),
-            autoclean=True,
-            qualitythr=0.8,
-        )
-        meshset.apply_filter('remove_unreferenced_vertices')
+        with tempfile.NamedTemporaryFile(suffix='.ply') as temp_f:
+            self.full_plydata.write(temp_f.name)
+            meshset = pymeshlab.MeshSet()
+            meshset.load_new_mesh(temp_f.name)
 
-        meshset.save_current_mesh(temp_ply_path)
-        new_ply_data = PlyData.read(temp_ply_path)
-        os.remove(temp_ply_path)
+            meshset.apply_filter(
+                'simplification_quadric_edge_collapse_decimation',
+                targetperc=dstarget / len(self.full_plydata['vertex']),
+                autoclean=True,
+                qualitythr=0.8,
+            )
+            meshset.apply_filter('remove_unreferenced_vertices')
 
-        # TODO not necessary ?
-        # new_ply_data = add_fields_online(new_ply_data, ['label', 'ushort'])
+            meshset.save_current_mesh(temp_f.name)
+            new_ply_data = PlyData.read(temp_f.name)
+
         self.sampled_plydata = new_ply_data
         print(f"downsampled size: {len(self.sampled_plydata['vertex'])}")
         return self
