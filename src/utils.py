@@ -1,5 +1,7 @@
 import datetime
 import functools
+import sys
+from contextlib import contextmanager
 from typing import List, Tuple
 
 import numpy as np
@@ -55,3 +57,12 @@ def timer(fn):
         return r
 
     return inner
+
+
+@contextmanager
+def count_time(name=None, file=sys.stdout):
+    print(f"Process {(name+' ') if name is not None else ''}start", file=file)
+    start = datetime.now()
+    yield
+    end = datetime.now()
+    print(f"Process {(name+' ') if name is not None else ''}spent: {(end - start).seconds}s {(end-start).microseconds // 1000} ms", file=file)

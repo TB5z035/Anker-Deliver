@@ -41,3 +41,14 @@ SCANNET_COLOR_MAP = {
     39: (82., 84., 163.),
     40: (100., 85., 144.),
 }
+# DistanceProportion = 0.8
+# TargetFaceNum = 10000
+# QualityThreshold = 0.8
+# MeshHeatT = 1.0
+# NormalKnnRange = 10
+# AutoTemperature = yes
+# Temperature = 0.1
+# Shots = 20
+CONFIGS = {
+    'normal_knn_range': 10,
+}

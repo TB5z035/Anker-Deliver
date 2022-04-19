@@ -1,13 +1,27 @@
+import os
+from random import randint
+from typing import List
+
+import numpy as np
+import open3d as o3d
+import potpourri3d as pp3d
+import pymeshlab
+import torch
+from plyfile import PlyData
+from sklearnex import patch_sklearn
+from tqdm import tqdm
+
+from .config import SCANNET_COLOR_MAP
+from .utils import count_time, plydata_to_arrays, setup_mapping, timer
+
+patch_sklearn()
+from sklearn.cluster import KMeans
 
 
 class SpecClusterPipeline():
 
     def __init__(self, scan_path, count=200) -> None:
         self._load_plydata(scan_path)
-        self.scan_id = re.findall('scene\d\d\d\d_\d\d', scan_path)[0]
-        self.conf = configparser.ConfigParser()
-        self.conf.read(CONF_FILE)
-        self.conf = self.conf['Debug']
         self._load_sample_ids(count)
 
     def _load_plydata(self, scan_path):
@@ -53,13 +67,11 @@ class SpecClusterPipeline():
         return self
 
     @timer
-    @log(QUIET)
     def setup_mapping(self):
         self.full2sampled, self.sampled2full = setup_mapping(self.full_plydata, self.sampled_plydata)
         return self
 
     @timer
-    @log(QUIET)
     def calc_geod_dist(self):
         assert self.sampled_plydata is not None
         plydata = self.sampled_plydata
@@ -77,7 +89,6 @@ class SpecClusterPipeline():
         return self
 
     @timer
-    @log(QUIET)
     def calc_ang_dist(self, abs_inv=True, knn_range=None):
         assert self.sampled_plydata is not None
         knn = self.conf.getint('NormalKnnRange') if knn_range is None else knn_range
@@ -99,7 +110,6 @@ class SpecClusterPipeline():
         return self
 
     @timer
-    @log(QUIET)
     def calc_aff_mat(self, ratio: float = None):
         assert self.geod_mat is not None
         assert self.ang_mat is not None
@@ -118,7 +128,6 @@ class SpecClusterPipeline():
         return self
 
     @timer
-    @log(QUIET)
     def calc_embedding(self, feature: int = 30):
         assert self.aff_mat is not None
         eigh_vals, eigh_vecs = torch.linalg.eigh(self.aff_mat)
@@ -130,7 +139,6 @@ class SpecClusterPipeline():
         return self
 
     @timer
-    @log(QUIET)
     def knn_cluster(self):
         shot = len(self.sample_ids)
         assert self.full_plydata is not None
@@ -177,7 +185,6 @@ class SpecClusterPipeline():
         self.Os = Os
         return self
 
-    @log(QUIET)
     def save(self, save_dir="debug"):
         shot = len(self.sample_ids)
         os.makedirs(f"{save_dir}/spec_predictions", exist_ok=True)
@@ -196,4 +203,3 @@ class SpecClusterPipeline():
         self.full_plydata['vertex']['blue'] = map_np[:, 2][self.full_predicted_labels]
         self.full_plydata.write(f'{dir}/{self.scan_id}.spec_clus.ply')
         return self
-
