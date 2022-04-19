@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 from .config import CONFIGS, SCANNET_COLOR_MAP
 from .utils import count_time, plydata_to_arrays, setup_mapping, timer
-
+from IPython import embed
 patch_sklearn()
 from sklearn.cluster import KMeans
 
@@ -98,6 +98,7 @@ class SpecClusterPipeline():
     def calc_aff_mat(self, ratio: float = None):
         assert self.geod_mat is not None
         assert self.ang_mat is not None
+        embed()
         ratio = CONFIGS['dist_proportion'] if ratio is None else ratio
         print(ratio)
         geod_mat = torch.as_tensor(self.geod_mat).cuda()
@@ -193,3 +194,9 @@ class SpecClusterPipeline():
         self.full_plydata['vertex']['blue'] = map_np[:, 2][self.full_predicted_labels]
         self.full_plydata.write(f'{dir}/{self.scan_id}.spec_clus.ply')
         return self
+
+
+if __name__ == '__main__':
+    p = SpecClusterPipeline('/home/tb5zhh/Anker-Deliver/misc/scene0000_00_vh_clean_2.labels.ply')
+    p.downsample().calc_geod_dist().calc_ang_dist().calc_aff_mat()
+    # .calc_embedding().knn_cluster().evaluate_cluster_result()
