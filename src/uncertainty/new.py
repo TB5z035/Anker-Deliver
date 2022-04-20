@@ -805,17 +805,17 @@ def train(model, dataloader, val_dataloader, config, logger, rank=0, world_size=
                     logger.info(
                         f"TRAIN at global step #{global_step} Epoch #{epoch+1} Step #{step+1} / {len(dataloader)}: loss:{loss:.4f}, precision: {precision:.4f}"
                     )
-                    if config.wandb:
-                        obj = {
-                            'loss': loss.cpu().item(),
-                            'precision': precision.cpu().item(),
-                            'learning rate': get_lr(optimizer),
-                        }
-                        wandb.log({
-                            'optim_step': optim_step,
-                            'global_step': global_step,
-                            **obj,
-                        })
+                    # if config.wandb:
+                    #     obj = {
+                    #         'loss': loss.cpu().item(),
+                    #         'precision': precision.cpu().item(),
+                    #         'learning rate': get_lr(optimizer),
+                    #     }
+                    #     wandb.log({
+                    #         'optim_step': optim_step,
+                    #         'global_step': global_step,
+                    #         **obj,
+                    #     })
 
                 del coords
                 del feats
@@ -844,16 +844,16 @@ def train(model, dataloader, val_dataloader, config, logger, rank=0, world_size=
                         for idx, i in enumerate(iou_per_class):
                             logger.info(f"VAL   at global step #{global_step}: iou (cls#{idx}): {i.item():.4f}")
 
-                        if config.wandb:
-                            obj = {
-                                'val_loss': val_loss.cpu().item(),
-                                'val_miou_mean': val_miou.cpu().item(),
-                            }
-                            wandb.log({
-                                'val_step': val_step,
-                                'global_step': global_step,
-                                **obj,
-                            })
+                        # if config.wandb:
+                        #     obj = {
+                        #         'val_loss': val_loss.cpu().item(),
+                        #         'val_miou_mean': val_miou.cpu().item(),
+                        #     }
+                        #     wandb.log({
+                        #         'val_step': val_step,
+                        #         'global_step': global_step,
+                        #         **obj,
+                        #     })
                     if val_miou.item() > best_miou:
                         best_miou = val_miou.item()
                         best_val_loss = val_loss.item()
