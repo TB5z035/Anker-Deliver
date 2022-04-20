@@ -1,0 +1,10 @@
+pytest
+yapf
+numpy
+plyfile
+pymeshlab
+potpourri3d
+open3d
+scikit-learn
+scikit-learn-intelex
+tqdm

@@ -1,20 +1,20 @@
+from copy import deepcopy
 import os
-from random import randint
 import tempfile
-from typing import List
 
 import numpy as np
 import open3d as o3d
 import potpourri3d as pp3d
 import pymeshlab
 import torch
+from IPython import embed
 from plyfile import PlyData
 from sklearnex import patch_sklearn
 from tqdm import tqdm
 
 from .config import CONFIGS, SCANNET_COLOR_MAP
-from .utils import count_time, plydata_to_arrays, setup_mapping, timer
-from IPython import embed
+from .utils import count_time, plydata_to_arrays, setup_mapping, timer, add_fields_online
+
 patch_sklearn()
 from sklearn.cluster import KMeans
 
@@ -38,12 +38,12 @@ class SpecClusterPipeline():
             meshset.load_new_mesh(temp_f.name)
 
             meshset.apply_filter(
-                'simplification_quadric_edge_collapse_decimation',
+                'meshing_decimation_quadric_edge_collapse',
                 targetperc=dstarget / len(self.full_plydata['vertex']),
                 autoclean=True,
                 qualitythr=0.8,
             )
-            meshset.apply_filter('remove_unreferenced_vertices')
+            meshset.apply_filter('meshing_remove_unreferenced_vertices')
 
             meshset.save_current_mesh(temp_f.name)
             new_ply_data = PlyData.read(temp_f.name)
@@ -60,16 +60,15 @@ class SpecClusterPipeline():
     def calc_geod_dist(self):
         assert self.sampled_plydata is not None
         plydata = self.sampled_plydata
-        with count_time('calculate geodesic distances'):
-            vertices, faces = plydata_to_arrays(plydata)
-            solver = pp3d.MeshHeatMethodDistanceSolver(vertices, faces)
-            distances = []
-            print(len(plydata['vertex']))
-            for i in tqdm(range(len(plydata['vertex'])), disable=True):
-                distances.append(solver.compute_distance(i))
+        vertices, faces = plydata_to_arrays(plydata)
+        solver = pp3d.MeshHeatMethodDistanceSolver(vertices, faces)
+        distances = []
+        print(len(plydata['vertex']))
+        for i in tqdm(range(len(plydata['vertex'])), disable=True):
+            distances.append(solver.compute_distance(i))
 
-            geod_mat = np.stack(distances)
-            geod_mat = (geod_mat + geod_mat.T) / 2
+        geod_mat = np.stack(distances)
+        geod_mat = (geod_mat + geod_mat.T) / 2
         self.geod_mat = geod_mat
         return self
 
@@ -98,9 +97,7 @@ class SpecClusterPipeline():
     def calc_aff_mat(self, ratio: float = None):
         assert self.geod_mat is not None
         assert self.ang_mat is not None
-        embed()
         ratio = CONFIGS['dist_proportion'] if ratio is None else ratio
-        print(ratio)
         geod_mat = torch.as_tensor(self.geod_mat).cuda()
         ang_mat = self.ang_mat.cuda()
         dist_mat = ratio * geod_mat + (1 - ratio) * ang_mat
@@ -126,20 +123,18 @@ class SpecClusterPipeline():
 
     @timer
     def knn_cluster(self, count=200):
-        shot = len(self.sample_ids)
         assert self.full_plydata is not None
         assert self.full2sampled is not None
-        assert self.sample_ids is not None
         assert self.embedding_mat is not None
-
-        mask = self.sampled_plydata['vertex']['label'] != 255
+        mask = self.full_plydata['vertex']['label'][self.sampled2full] != 255
+        # mask = self.sampled_plydata['vertex']['label'] != 255
         assert mask.any()
         assert count < mask.sum()
         selected_vertex_indices_in_sampled = np.random.permutation(np.nonzero(mask)[0])[:count]
-        
-        selected_vertex_labels = self.full_plydata['vertex']['label'][self.sample_ids]
+
+        selected_vertex_labels = self.full_plydata['vertex']['label'][self.sampled2full][selected_vertex_indices_in_sampled]
         self.cluster_result = KMeans(
-            n_clusters=shot,
+            n_clusters=count,
             init=self.embedding_mat[selected_vertex_indices_in_sampled],
         ).fit(self.embedding_mat)
 
@@ -189,14 +184,16 @@ class SpecClusterPipeline():
         assert self.full_predicted_labels is not None
         os.makedirs(dir, exist_ok=True)
         map_np = np.asarray(list(SCANNET_COLOR_MAP.values()))
-        self.full_plydata['vertex']['red'] = map_np[:, 0][self.full_predicted_labels]
-        self.full_plydata['vertex']['green'] = map_np[:, 1][self.full_predicted_labels]
-        self.full_plydata['vertex']['blue'] = map_np[:, 2][self.full_predicted_labels]
-        self.full_plydata.write(f'{dir}/{self.scan_id}.spec_clus.ply')
+        cloned_plydata = deepcopy(self.full_plydata)
+        cloned_plydata['vertex']['red'] = map_np[:, 0][self.full_predicted_labels]
+        cloned_plydata['vertex']['green'] = map_np[:, 1][self.full_predicted_labels]
+        cloned_plydata['vertex']['blue'] = map_np[:, 2][self.full_predicted_labels]
+        cloned_plydata.write(f'{dir}/output.ply')
         return self
 
 
 if __name__ == '__main__':
-    p = SpecClusterPipeline('/home/tb5zhh/Anker-Deliver/misc/scene0000_00_vh_clean_2.labels.ply')
-    p.downsample().calc_geod_dist().calc_ang_dist().calc_aff_mat()
-    # .calc_embedding().knn_cluster().evaluate_cluster_result()
+    p = SpecClusterPipeline('misc/scene0000_00_vh_clean_2.labels.ply')
+    p.downsample().setup_mapping().calc_geod_dist().calc_ang_dist().calc_aff_mat().calc_embedding().knn_cluster().evaluate_cluster_result(
+    ).save_visualize()
+    embed()
