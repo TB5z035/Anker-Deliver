@@ -1,11 +1,11 @@
-from models.resnet import ResNetBase, get_norm
-from models.modules.common import ConvType, NormType, conv, conv_tr, drop_out
-from models.modules.resnet_block import BasicBlock, Bottleneck
-
-from MinkowskiEngine import MinkowskiReLU
 import MinkowskiEngine.MinkowskiOps as me
-
 from IPython import embed
+from MinkowskiEngine import MinkowskiReLU
+
+from .modules.common import ConvType, NormType, conv, conv_tr, drop_out
+from .modules.resnet_block import BasicBlock, Bottleneck
+from .resnet import ResNetBase, get_norm
+
 
 class Res16UNetBase(ResNetBase):
   BLOCK = None

@@ -1,3 +1,5 @@
+FROM nvidia/cuda:11.1-cudnn8-devel-ubuntu18.04 AS CUDA
+
 FROM pytorch/pytorch:1.8.1-cuda11.1-cudnn8-runtime AS TORCH_BASE
 ENV HOME=/opt
 # ENV DEBIAN_FRONTEND=noninteractive
@@ -9,6 +11,13 @@ RUN apt-get install --no-install-recommends -y \
 
 COPY requirements.txt ${HOME}
 RUN pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
-RUN pip install -U MinkowskiEngine --install-option="--blas=openblas" --install-option="--force_cuda" -v --no-deps 
+RUN pip install numpy ninja -i https://mirrors.aliyun.com/pypi/simple
 
-COPY . ${HOME}
+COPY --from=CUDA /usr/local/cuda /usr/local/cuda
+COPY MinkowskiEngine/ ${HOME}/MinkowskiEngine
+WORKDIR ${HOME}/MinkowskiEngine/
+RUN TORCH_CUDA_ARCH_LIST=8.6+PTX CUDA_HOME=/usr/local/cuda python setup.py install --blas=openblas --force_cuda
+
+RUN pip install imageio -i https://mirrors.aliyun.com/pypi/simple
+WORKDIR ${HOME}
+# COPY . ${HOME}

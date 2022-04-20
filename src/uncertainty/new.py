@@ -1,27 +1,22 @@
 import logging
 import os
-import time
 import random
+import time
 
+import MinkowskiEngine as ME
 import numpy as np
 import torch
-from torch import nn
-import torch.nn.functional as F
 import torch.distributed as dist
 import torch.multiprocessing as mp
+import torch.nn.functional as F
+from torch import nn
+
+from .config import get_config
+from .dataset import initialize_data_loader
+from .dataset.datasets import load_dataset
+from .dataset.datasets.scannet import CLASS_LABELS, COLOR_MAP
 from .lib.solvers import initialize_optimizer, initialize_scheduler
-from .lib.utils import save_predictions
-
-from .lib.dataset import initialize_data_loader
-from .lib.datasets import load_dataset
-from .lib.datasets.scannet import COLOR_MAP, CLASS_LABELS
-from .lib.distributed_utils import all_gather_list
-from models import load_model
-from config import get_config
-
-from IPython import embed
-import MinkowskiEngine as ME
-
+from .models import load_model
 
 
 def checkpoint(model, optimizer, scheduler, config, prefix='', world_size=1, **kwarg):
@@ -964,8 +959,8 @@ def extract_label():
 def unc_render(dataloader, config, logger, rank=0, world_size=1, option=1):
     if rank > 0:
         return
-    from tqdm import tqdm
     from plyfile import PlyData
+    from tqdm import tqdm
     global_cnt = 0
     with open('splits/scannet/scannetv2_train.txt') as f:
         names = sorted([i.strip() for i in f.readlines()])

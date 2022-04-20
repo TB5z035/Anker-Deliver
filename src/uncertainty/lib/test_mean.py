@@ -13,7 +13,7 @@ from sklearn.preprocessing import label_binarize
 from sklearn.neighbors import NearestNeighbors
 from lib.utils import Timer, AverageMeter, precision_at_one, fast_hist, per_class_iu, \
     get_prediction, get_torch_device, save_predictions, visualize_results, \
-    permute_pointcloud, save_rotation_pred
+    permute_pointcloud
 
 from MinkowskiEngine import SparseTensor
 

@@ -1,7 +1,6 @@
-import lib.datasets.synthia as synthia
-import lib.datasets.stanford as stanford
-import lib.datasets.scannet as scannet
-import lib.datasets.scannet_test as scannet_test
+# from . import synthia as synthia
+# from . import stanford as stanford
+from . import scannet as scannet
 
 DATASETS = []
 
@@ -10,10 +9,9 @@ def add_datasets(module):
   DATASETS.extend([getattr(module, a) for a in dir(module) if 'Dataset' in a])
 
 
-add_datasets(stanford)
-add_datasets(synthia)
+# add_datasets(stanford)
+# add_datasets(synthia)
 add_datasets(scannet)
-add_datasets(scannet_test)
 
 
 def load_dataset(name):

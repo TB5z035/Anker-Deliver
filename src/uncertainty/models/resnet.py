@@ -1,10 +1,9 @@
+import MinkowskiEngine as ME
 import torch.nn as nn
 
-import MinkowskiEngine as ME
-
-from models.model import Model
-from models.modules.common import ConvType, NormType, get_norm, conv, sum_pool
-from models.modules.resnet_block import BasicBlock, Bottleneck
+from .model import Model
+from .modules.common import ConvType, NormType, conv, get_norm, sum_pool
+from .modules.resnet_block import BasicBlock, Bottleneck
 
 
 class ResNetBase(Model):
