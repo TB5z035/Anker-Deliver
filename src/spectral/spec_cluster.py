@@ -12,8 +12,8 @@ from plyfile import PlyData
 from sklearnex import patch_sklearn
 from tqdm import tqdm
 
-from .config import CONFIGS, SCANNET_COLOR_MAP
-from .utils import count_time, plydata_to_arrays, setup_mapping, timer, add_fields_online
+from ..config import CONFIGS, SCANNET_COLOR_MAP
+from ..utils import count_time, plydata_to_arrays, setup_mapping, timer, add_fields_online
 
 patch_sklearn()
 from sklearn.cluster import KMeans

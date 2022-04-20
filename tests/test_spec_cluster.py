@@ -1,6 +1,6 @@
 from plyfile import PlyData
 
-from src.spec_cluster import SpecClusterPipeline
+from src.spectral.spec_cluster import SpecClusterPipeline
 import os
 
 ply_path = 'misc/scene0000_00_vh_clean_2.labels.ply'
