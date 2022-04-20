@@ -9,13 +9,13 @@ from torch import nn
 import torch.nn.functional as F
 import torch.distributed as dist
 import torch.multiprocessing as mp
-from lib.solvers import initialize_optimizer, initialize_scheduler
-from lib.utils import save_predictions
+from .lib.solvers import initialize_optimizer, initialize_scheduler
+from .lib.utils import save_predictions
 
-from lib.dataset import initialize_data_loader
-from lib.datasets import load_dataset
-from lib.datasets.scannet import COLOR_MAP, CLASS_LABELS
-from lib.distributed_utils import all_gather_list
+from .lib.dataset import initialize_data_loader
+from .lib.datasets import load_dataset
+from .lib.datasets.scannet import COLOR_MAP, CLASS_LABELS
+from .lib.distributed_utils import all_gather_list
 from models import load_model
 from config import get_config
 

@@ -7,8 +7,8 @@ import time
 import numpy as np
 import torch
 
-from lib.pc_utils import colorize_pointcloud, save_point_cloud
-from lib.distributed_utils import get_world_size, get_rank
+from .pc_utils import colorize_pointcloud, save_point_cloud
+from .distributed_utils import get_world_size, get_rank
 
 
 def load_state_with_same_shape(model, weights):
