@@ -1,3 +1,6 @@
 **/__pycache__
 *.ply
 .vscode/
+*.log
+*.ply
+checkpoints/

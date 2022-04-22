@@ -69,7 +69,7 @@ def train(model, data_loader, val_data_loader, config, transform_data_fn=None):
 
     # Train the network
     logging.info('===> Start training on {} GPUs, batch-size={}'.format(
-        get_world_size(), config.batch_size * get_world_size()
+        get_world_size(), config.train_batch_size * get_world_size()
     ))
     best_val_miou, best_val_iter, curr_iter, epoch, is_training = 0, 0, 1, 1, True
 

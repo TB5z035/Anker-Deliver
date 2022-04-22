@@ -1,16 +1,13 @@
-POINTS=$1
-UNC_RESULT_DIR=results/$POINTS
-mkdir -p $UNC_RESULT_DIR
-
-
-python -m src.uncertainty.new \
-    --log_dir log \
+python -m src.uncertainty.inference \
+    --do_validate \
+    --run_name test \
     --seed 42 \
-    --test_batch_size 24 \
-    --run_name unc_inference_$POINTS \
-    --unc_result_dir $UNC_RESULT_DIR \
-    --unc_round 50 \
-    --unc_dataset ScannetVoxelization2cmtestDataset \
-    --scannet_path ~/data/$POINTS/train \
-    --scannet_test_path ~/data/full/train \
-    --do_unc_render
+    --model Res16UNet34C \
+    --val_dataset InferenceDataset \
+    --data_root misc \
+    --num_workers 4 \
+    --weights checkpoints/finetune_100_fit_spec_0.3_PolyLR_Res16UNet34C_best.pth \
+    --checkpoint_dir checkpoints \
+    --eval_result_dir results/test \
+    --log_dir log \
+    --val_batch_size 1 

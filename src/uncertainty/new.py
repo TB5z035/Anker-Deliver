@@ -869,7 +869,7 @@ def train(model, dataloader, val_dataloader, config, logger, rank=0, world_size=
             torch.cuda.empty_cache()
 
         # periodic checkpoint
-        if (epoch + 1) % config.save_epoch == 0:
+        if (epoch + 1) % config.save_freq== 0:
             if world_size == 1 or rank == 0:
                 args = {
                     'best_miou': best_miou,
