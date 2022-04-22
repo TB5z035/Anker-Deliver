@@ -3,12 +3,11 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from .dataset.dataset import initialize_data_loader
-
-from .dataset.datasets import load_dataset
-
 from ..utils import calc_iou, fast_hist, save_prediction
+from .dataset.dataset import initialize_data_loader
+from .dataset.datasets import load_dataset
 from .main import main
+
 
 def inference(
     model,
@@ -73,6 +72,7 @@ def inference(
 
     if evaluate:
         return torch.stack(losses).mean(), iou.mean(), iou
+
 
 def action(rank, world_size, model, logger, config):
     val_dataset_cls = load_dataset(config.val_dataset)
