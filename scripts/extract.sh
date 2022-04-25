@@ -1,0 +1,1 @@
+python -m src.extract_annotation

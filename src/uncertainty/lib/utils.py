@@ -8,7 +8,7 @@ import numpy as np
 import torch
 
 from .pc_utils import colorize_pointcloud, save_point_cloud
-from .distributed_utils import get_world_size, get_rank
+from ..distributed_utils import get_world_size, get_rank
 
 
 def load_state_with_same_shape(model, weights):
@@ -27,49 +27,10 @@ def load_state_with_same_shape(model, weights):
     return filtered_weights
 
 
-def checkpoint(model, optimizer, epoch, iteration, config, best_val=None, best_val_iter=None, postfix=None):
-    mkdir_p(config.log_dir)
-    # only works for rank == 0
-    if get_world_size() > 1 and get_rank() > 0:
-        return
-
-    mkdir_p('weights')
-    if config.overwrite_weights:
-        if postfix is not None:
-            filename = f"checkpoint_{config.wrapper_type}{config.model}{postfix}.pth"
-        else:
-            filename = f"checkpoint_{config.wrapper_type}{config.model}.pth"
-    else:
-        filename = f"checkpoint_{config.wrapper_type}{config.model}_iter_{iteration}.pth"
-    checkpoint_file = config.log_dir + '/' + filename
-
-    _model = model.module if get_world_size() > 1 else model
-    state = {'iteration': iteration, 'epoch': epoch, 'arch': config.model, 'state_dict': _model.state_dict(), 'optimizer': optimizer.state_dict()}
-    if best_val is not None:
-        state['best_val'] = best_val
-        state['best_val_iter'] = best_val_iter
-    json.dump(vars(config), open(config.log_dir + '/config.json', 'w'), indent=4)
-    torch.save(state, checkpoint_file)
-    logging.info(f"Checkpoint saved to {checkpoint_file}")
-    # Delete symlink if it exists
-    if os.path.exists(f'{config.log_dir}/weights.pth'):
-        os.remove(f'{config.log_dir}/weights.pth')
-    # Create symlink
-    os.system(f'cd {config.log_dir}; ln -s {filename} weights.pth')
 
 
-def precision_at_one(pred, target, ignore_label=255):
-    """Computes the precision@k for the specified values of k"""
-    # batch_size = target.size(0) * target.size(1) * target.size(2)
-    pred = pred.view(1, -1)
-    target = target.view(1, -1)
-    correct = pred.eq(target)
-    correct = correct[target != ignore_label]
-    correct = correct.view(-1)
-    if correct.nelement():
-        return correct.float().sum(0).mul(100.0 / correct.size(0)).item()
-    else:
-        return float('nan')
+
+
 
 
 def fast_hist(pred, label, n):
@@ -97,71 +58,6 @@ class WithTimer(object):
             logging.info('[{self.name}]')
         logging.info(out_str)
 
-
-class Timer(object):
-    """A simple timer."""
-
-    def __init__(self):
-        self.total_time = 0.
-        self.calls = 0
-        self.start_time = 0.
-        self.diff = 0.
-        self.average_time = 0.
-
-    def reset(self):
-        self.total_time = 0
-        self.calls = 0
-        self.start_time = 0
-        self.diff = 0
-        self.averate_time = 0
-
-    def tic(self):
-        # using time.time instead of time.clock because time time.clock
-        # does not normalize for multithreading
-        self.start_time = time.time()
-
-    def toc(self, average=True):
-        self.diff = time.time() - self.start_time
-        self.total_time += self.diff
-        self.calls += 1
-        self.average_time = self.total_time / self.calls
-        if average:
-            return self.average_time
-        else:
-            return self.diff
-
-
-class ExpTimer(Timer):
-    """ Exponential Moving Average Timer """
-
-    def __init__(self, alpha=0.5):
-        super(ExpTimer, self).__init__()
-        self.alpha = alpha
-
-    def toc(self):
-        self.diff = time.time() - self.start_time
-        self.average_time = self.alpha * self.diff + \
-            (1 - self.alpha) * self.average_time
-        return self.average_time
-
-
-class AverageMeter(object):
-    """Computes and stores the average and current value"""
-
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
 
 
 def mkdir_p(path):

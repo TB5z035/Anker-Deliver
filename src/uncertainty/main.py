@@ -11,16 +11,16 @@ import torch.multiprocessing as mp
 import torch.nn.functional as F
 from torch import nn
 
-from ..config import get_config
+from .config import get_config
 from .dataset.dataset import initialize_data_loader
 from .dataset.datasets import load_dataset
 from .dataset.datasets.scannet import COLOR_MAP
 from .lib.solvers import initialize_optimizer, initialize_scheduler
 from .models import load_model
-from ..utils import distributed_init, setup_logger
+from .utils import distributed_init, setup_logger
 
 
-def main(action):
+def main(action, mod_config):
     """
     Program entry
     Branch based on number of available GPUs
@@ -31,14 +31,14 @@ def main(action):
         init_method = f'tcp://localhost:{port}'
         mp.spawn(
             fn=main_worker,
-            args=(device_count, init_method, action),
+            args=(device_count, init_method, action, mod_config),
             nprocs=device_count,
         )
     else:
-        main_worker()
+        main_worker(0, 1, None, action, mod_config)
 
 
-def main_worker(rank=0, world_size=1, init_method=None, action=None):
+def main_worker(rank=0, world_size=1, init_method=None, action=None, mod_config=None):
     """
     Top pipeline
     """
@@ -51,6 +51,7 @@ def main_worker(rank=0, world_size=1, init_method=None, action=None):
         distributed_init(init_method, rank, world_size)
 
     config = get_config()
+    config = mod_config(config)
     setup_logger(config)
     logger = logging.getLogger(__name__)
     if rank == 0:
@@ -79,15 +80,6 @@ def main_worker(rank=0, world_size=1, init_method=None, action=None):
         model.load_state_dict({k: v for k, v in state['state_dict'].items() if not k.startswith('projector.')})
         if rank == 0:
             logger.info(f"Weights loaded from {config.weights}")  # pylint: disable=W1203
-    if config.resume:
-        try:
-            state = torch.load(f"checkpoints/{config.run_name}_latest.pth", map_location=f'cuda:{device}')
-            model.load_state_dict(state['state_dict'])
-            if rank == 0:
-                logger.info(f"Checkpoint resumed from {config.resume}")  # pylint: disable=W1203
-        except Exception as e:
-            logger.info(e)
-            logger.warn(f"checkpoint not found")
 
     model = model.to(device)
     if rank == 0:
@@ -103,7 +95,7 @@ def main_worker(rank=0, world_size=1, init_method=None, action=None):
             # bucket_cap_mb=
         )
 
-    action(rank, world_size, model, logger, config)
+    action(model, config)
     return 
     # wandb
 

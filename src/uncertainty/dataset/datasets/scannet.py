@@ -102,7 +102,7 @@ class InferenceDataset(ScannetVoxelizationConfig, VoxelizationDataset):
         augment_data=True,
         phase=None,
     ) -> None:
-        self.data_paths = [(config.data_root + '/' + i) for i in sorted(os.listdir(config.data_root))]
+        self.data_paths = [(config.data_root + '/' + i) for i in sorted(os.listdir(config.data_root), key=lambda x: int(x.split('.')[0]))]
         VoxelizationDataset.__init__(
             self,
             input_transform=input_transform,

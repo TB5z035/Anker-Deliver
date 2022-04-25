@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from . import transforms as t
 from .sampler import DistributedInfSampler, InfSampler
-from ..lib.distributed_utils import get_world_size
+from ..distributed_utils import get_world_size
 from .voxelizer import Voxelizer
 
 
@@ -163,7 +163,7 @@ class VoxelizationDataset(VoxelizationConfig, DictDataset):
 
         # For saving mappings
         # coords, feats, labels, transformation, mapping, inverse_mapping = self.voxelizer.voxelize(coords, feats, labels, center=center, )
-        coords, feats, labels, transformation = self.voxelizer.voxelize(coords, feats, labels, center=center, )
+        coords, feats, labels, transformation, unique, inverse = self.voxelizer.voxelize(coords, feats, labels, center=center, )
 
         if isinstance(coords, torch.Tensor):
             coords = coords.numpy()
@@ -188,9 +188,9 @@ class VoxelizationDataset(VoxelizationConfig, DictDataset):
         if self.return_transformation:
             return_args.append(transformation.astype(np.float32))
 
-        if self.return_mapping:
-            return_args.append(mapping.cpu())
-            return_args.append(inverse_mapping.cpu())
+
+        return_args.append(unique)
+        return_args.append(inverse)
 
         return tuple(return_args)
 

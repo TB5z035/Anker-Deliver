@@ -112,8 +112,10 @@ def suppress_output(is_master):
 
 
 def get_rank():
-    return dist.get_rank()
-
+    try:
+        return dist.get_rank()
+    except Exception:
+        return 0
 
 def get_world_size():
     try:

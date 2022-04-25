@@ -137,9 +137,9 @@ class Voxelizer:
         coords_aug = np.floor(coords_aug - min_coords)
 
         # key = self.hash(coords_aug)  # floor happens by astype(np.uint64)
-        coords_aug, feats, labels = ME.utils.sparse_quantize(coords_aug, feats, labels=labels, ignore_label=self.ignore_label)
+        coords_aug, feats, labels, unique, inverse = ME.utils.sparse_quantize(coords_aug, feats, labels=labels, ignore_label=self.ignore_label, return_index=True, return_inverse=True)
 
-        return coords_aug, feats, labels, rigid_transformation.flatten()
+        return coords_aug, feats, labels, rigid_transformation.flatten(), unique, inverse
 
     def voxelize_temporal(self, coords_t, feats_t, labels_t, centers=None, return_transformation=False):
         # Legacy code, remove

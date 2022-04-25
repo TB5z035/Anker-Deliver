@@ -1,6 +1,8 @@
 import functools
+import json
 import logging
 import os
+from pathlib import Path
 import sys
 import time
 from contextlib import contextmanager
@@ -12,7 +14,8 @@ import torch
 import torch.distributed as dist
 from plyfile import PlyData, PlyElement
 
-from .uncertainty.dataset.datasets.scannet import COLOR_MAP
+from .dataset.datasets.scannet import COLOR_MAP
+from .distributed_utils import get_rank, get_world_size
 
 
 def add_fields_online(plydata: PlyData, fields: List[Tuple], clear=True) -> PlyData:
@@ -179,6 +182,7 @@ def save_prediction(coords, feats, path, mode='unc', in_fn=None):
         rgbl_fn = in_fn
 
     print(f'Saved to {path}')
+    os.makedirs(Path(path).parent, exist_ok=True)
     with open(path, 'w') as f:  # pylint: disable=invalid-name
         f.write('ply\n'
                 'format ascii 1.0\n'
@@ -197,3 +201,115 @@ def save_prediction(coords, feats, path, mode='unc', in_fn=None):
                     f'{rgbl_fn(id, row, feat)[1]} '
                     f'{rgbl_fn(id, row, feat)[2]} '
                     f'{rgbl_fn(id, row, feat)[3]}\n')
+
+
+class Timer(object):
+    """A simple timer."""
+
+    def __init__(self):
+        self.total_time = 0.
+        self.calls = 0
+        self.start_time = 0.
+        self.diff = 0.
+        self.average_time = 0.
+
+    def reset(self):
+        self.total_time = 0
+        self.calls = 0
+        self.start_time = 0
+        self.diff = 0
+        self.averate_time = 0
+
+    def tic(self):
+        # using time.time instead of time.clock because time time.clock
+        # does not normalize for multithreading
+        self.start_time = time.time()
+
+    def toc(self, average=True):
+        self.diff = time.time() - self.start_time
+        self.total_time += self.diff
+        self.calls += 1
+        self.average_time = self.total_time / self.calls
+        if average:
+            return self.average_time
+        else:
+            return self.diff
+
+
+class ExpTimer(Timer):
+    """ Exponential Moving Average Timer """
+
+    def __init__(self, alpha=0.5):
+        super(ExpTimer, self).__init__()
+        self.alpha = alpha
+
+    def toc(self):
+        self.diff = time.time() - self.start_time
+        self.average_time = self.alpha * self.diff + \
+            (1 - self.alpha) * self.average_time
+        return self.average_time
+
+
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
+
+def precision_at_one(pred, target, ignore_label=255):
+    """Computes the precision@k for the specified values of k"""
+    # batch_size = target.size(0) * target.size(1) * target.size(2)
+    pred = pred.view(1, -1)
+    target = target.view(1, -1)
+    correct = pred.eq(target)
+    correct = correct[target != ignore_label]
+    correct = correct.view(-1)
+    if correct.nelement():
+        return correct.float().sum(0).mul(100.0 / correct.size(0)).item()
+    else:
+        return float('nan')
+
+
+def checkpoint(model, optimizer, epoch, iteration, config, best_val=None, best_val_iter=None, postfix=None, name=None):
+    os.makedirs(config.checkpoint_dir, exist_ok=True)
+    # only works for rank == 0
+    if get_world_size() > 1 and get_rank() > 0:
+        return
+
+    # os.makedirs('weights', exist_ok=True)
+    # if config.overwrite_weights:
+    #     if postfix is not None:
+    #         filename = f"checkpoint_{config.model}{postfix}.pth"
+    #     else:
+    #         filename = f"checkpoint_{config.model}.pth"
+    # else:
+    #     filename = f"checkpoint_{config.model}_iter_{iteration}.pth"
+    filename = name
+    checkpoint_file = config.checkpoint_dir + '/' + filename
+
+    _model = model.module if get_world_size() > 1 else model
+    state = {'iteration': iteration, 'epoch': epoch, 'arch': config.model, 'state_dict': _model.state_dict(), 'optimizer': optimizer.state_dict()}
+    if best_val is not None:
+        state['best_val'] = best_val
+        state['best_val_iter'] = best_val_iter
+    # json.dump(vars(config), open(config.checkpoint_dir + '/config.json', 'w'), indent=4)
+    logging.info(f"Checkpoint saved to {checkpoint_file}")
+    torch.save(state, checkpoint_file)
+    # Delete symlink if it exists
+    # if os.path.exists(f'{config.log_dir}/weights.pth'):
+    #     os.remove(f'{config.log_dir}/weights.pth')
+    # Create symlink
+    # os.system(f'cd {config.log_dir}; ln -s {filename} weights.pth')

@@ -28,7 +28,7 @@ class InfSampler(Sampler):
     def __next__(self):
         if len(self._perm) == 0:
             self.reset_permutation()
-            raise StopIteration
+            # raise StopIteration
         return self._perm.pop()
 
     def __len__(self):
@@ -69,7 +69,7 @@ class DistributedInfSampler(InfSampler):
         if (self.it * self.num_replicas) >= len(self._perm):
             self.reset_permutation()
             self.it = 0
-            raise StopIteration
+            # raise StopIteration
         return value
 
     def __len__(self):

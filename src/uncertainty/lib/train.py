@@ -11,17 +11,11 @@ from lib.test import test
 from lib.utils import checkpoint, precision_at_one, \
     Timer, AverageMeter, get_prediction, get_torch_device
 from lib.solvers import initialize_optimizer, initialize_scheduler
-from lib.distributed_utils import all_gather_list, get_world_size, get_rank
+from src.uncertainty.distributed_utils import all_gather_list, get_world_size, get_rank
 #from MinkowskiEngine import SparseTensor
 import MinkowskiEngine as ME
 
 
-def _set_seed(config, step):
-    # Set seed based on args.seed and the update number so that we get
-    # reproducible results when resuming from checkpoints
-    seed = config.seed + step
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
 
 
 def validate(model, val_data_loader, writer, curr_iter, config, transform_data_fn):

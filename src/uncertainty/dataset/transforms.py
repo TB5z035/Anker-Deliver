@@ -273,7 +273,7 @@ class cfl_collate_fn_factory:
         self.limit_numpoints = limit_numpoints
 
     def __call__(self, list_data):
-        coords, feats, labels = list(zip(*list_data))
+        coords, feats, labels, unique_map, inverse_map = list(zip(*list_data))
         coords_batch, feats_batch, labels_batch = [], [], []
 
         batch_id = 0
@@ -303,7 +303,7 @@ class cfl_collate_fn_factory:
         coords_batch = torch.cat(coords_batch, 0).int()
         feats_batch = torch.cat(feats_batch, 0).float()
         labels_batch = torch.cat(labels_batch, 0).int()
-        return coords_batch, feats_batch.float(), labels_batch
+        return coords_batch, feats_batch.float(), labels_batch, unique_map, inverse_map
 
 
 class cflt_collate_fn_factory:
